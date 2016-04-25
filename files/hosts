@@ -1,0 +1,14 @@
+127.0.0.1	localhost
+10.0.10.1	bdegw.bde-cluster	bdegw
+10.0.10.10	master.bde-cluster	master
+10.0.10.11	slave1.bde-cluster	slave1
+10.0.10.12	slave2.bde-cluster	slave2
+10.0.10.13	slave3.bde-cluster	slave3
+10.0.10.14	slave4.bde-cluster	slave4
+
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+

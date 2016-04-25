@@ -1,0 +1,127 @@
+---
+- hosts: gateway
+  become: True
+  become_method: sudo
+  tasks:
+
+        - name: Copy hosts file
+          copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
+        
+        - name: Copy network configuration file
+          copy: src=files/bdegw_interfaces.txt dest=/etc/network/interfaces owner=root group=root mode=0644
+        
+        - command: ifup eth0
+
+        - name: Enable forwarding
+          sysctl: name="net.ipv4.ip_forward" value=1 sysctl_set=yes state=present reload=yes
+
+        - name: Create bdeuser
+          user: name=bdeuser shell=/bin/bash
+
+        - name: install basic packages 
+          apt: state=present name={{item}}
+          with_items:
+                  -  ntp
+                  -  htop
+                  -  nmon
+                  -  nginx
+                  -  iptables-persistent
+        
+        - command: iptables --flush
+        - command: iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+        - command: iptables -A FORWARD -i eth1 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+        - command: iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT
+        - shell:   iptables-save > /etc/iptables/rules.v4
+
+- hosts: master:slaves
+  become: True
+  become_method: sudo
+  tasks:
+        - name: apt update
+          apt: upgrade=dist update_cache=yes
+
+        - name: Copy hosts file
+          copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
+
+        - name: Create various work directories
+          file: path=/srv/{{item}} state=directory mode=0755 #owner=www-data group=www-data     recurse=yes
+          with_items:
+                  - 4store
+                  - postgis
+                  - cassandra
+                  - hdfs
+                    
+        - name: Install basic packages 
+          apt: state=present name={{item}}
+          with_items:
+                  -  apt-transport-https
+                  -  ca-certificates
+                  -  ntp
+                  -  htop
+                  -  nmon
+                  -  linux-image-generic-lts-vivid
+                  -  linux-headers-generic-lts-vivid
+
+        - name: restart machine due to kernel upgrade
+          shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+          async: 1
+          poll: 0
+          sudo: true
+          ignore_errors: true
+
+        - name: waiting for server to come back
+          local_action: wait_for host={{ ansible_ssh_host }} state=started delay=60 timeout=90
+          become: False
+
+        - name: Add docker key
+          apt_key: keyserver=p80.pool.sks-keyservers.net id=58118E89F3A912897C070ADBF76221572C52609D
+
+        - name: Add docker repo
+          apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
+
+        - name: Install docker
+          apt: state=present name=docker-engine
+
+        - name: Setup docker daemon arguments
+          shell: echo "DOCKER_OPTS=\"-g /srv/docker -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=consul://10.0.10.10:8500 --cluster-advertise=`hostname -i`:2375\"" > /etc/default/docker
+          notify: restart_docker
+
+        - name: Create BDEuser 
+          user: name=bdeuser shell=/bin/bash groups=docker append=yes
+  handlers:
+          - name: restart_docker
+            service: name=docker state=restarted 
+          
+- hosts: master
+  become: True
+  become_method: sudo
+  tasks:
+          - debug: msg="swarm_setup"
+          - shell: docker -H=tcp://master:2375 run -d --restart always -p 8500:8500 --name=consul progrium/consul -server -bootstrap
+            ignore_errors: yes
+          - shell: docker -H=tcp://master:2375 run -d --restart always -p 4000:2375 swarm manage --advertise=10.0.10.10:2375 consul://10.0.10.10:8500
+            ignore_errors: yes
+          - shell: docker -H=tcp://master:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.10:2375 consul://10.0.10.10:8500
+            ignore_errors: yes
+          - shell: docker -H=tcp://slave1:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.11:2375 consul://10.0.10.10:8500
+            ignore_errors: yes
+          - shell: docker -H=tcp://slave2:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.12:2375 consul://10.0.10.10:8500
+            ignore_errors: yes
+          - shell: docker -H=tcp://slave3:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.13:2375 consul://10.0.10.10:8500
+            ignore_errors: yes
+          - shell: docker -H=tcp://slave4:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.14:2375 consul://10.0.10.10:8500
+            ignore_errors: yes
+          - shell: sleep 120
+          - shell: docker -H=tcp://master:4000 network create --driver overlay --internal --subnet=10.10.0.0/16 bde_net
+          
+          - name: Copy cassandra startup script
+            copy: src=files/start_cassandra.sh dest=/root owner=root group=root mode=0744
+          
+          - name: Copy hdfs startup script
+            copy: src=files/start_hdfs.sh dest=/root owner=root group=root mode=0744
+          
+          - name: Execute the cassandra script
+            command: sh /root/start_cassandra.sh
+          
+          - name: Execute the hdfs script
+            command: sh /root/start_hdfs.sh

@@ -1,0 +1,26 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+address 10.0.10.1
+netmask 255.255.255.0
+network 10.0.10.0
+broadcast 10.0.10.255
+
+# The primary network interface
+auto eth1
+iface eth1 inet static
+	address 143.233.226.33
+	netmask 255.255.255.128
+	network 143.233.226.0
+	broadcast 143.233.226.127
+	gateway 143.233.226.1
+	# dns-* options are implemented by the resolvconf package, if installed
+	dns-nameservers 143.233.226.2 143.233.226.3
+	dns-search iit.demokritos.gr
+
