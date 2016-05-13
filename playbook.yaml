@@ -59,7 +59,7 @@
                   -  ntp
                   -  htop
                   -  nmon
-		  -  git
+                  -  git
                   -  linux-image-generic-lts-vivid
                   -  linux-headers-generic-lts-vivid
 
