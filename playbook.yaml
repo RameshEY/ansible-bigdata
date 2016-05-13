@@ -59,6 +59,7 @@
                   -  ntp
                   -  htop
                   -  nmon
+		  -  git
                   -  linux-image-generic-lts-vivid
                   -  linux-headers-generic-lts-vivid
 
@@ -112,7 +113,7 @@
           - shell: docker -H=tcp://slave4:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.14:2375 consul://10.0.10.10:8500
             ignore_errors: yes
           - shell: sleep 120
-          - shell: docker -H=tcp://master:4000 network create --driver overlay --internal --subnet=10.10.0.0/16 bde_net
+          - shell: docker -H=tcp://master:4000 network create --driver overlay --subnet=10.10.0.0/16 bde_net
           
           - name: Copy cassandra startup script
             copy: src=files/start_cassandra.sh dest=/root owner=root group=root mode=0744
