@@ -98,7 +98,7 @@
   become_method: sudo
   tasks:
           - debug: msg="swarm_setup"
-          - shell: docker -H=tcp://master:2375 run -d --restart always -p 8500:8500 --name=consul progrium/consul -server -bootstrap
+          - shell: docker -H=tcp://master:2375 run -d --restart always -p 8500:8500 --name=consul -v /srv/consul:/data progrium/consul -server -bootstrap
             ignore_errors: yes
           - shell: sleep 60
           - shell: docker -H=tcp://master:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.10:2375 consul://10.0.10.10:8500
