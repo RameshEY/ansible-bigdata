@@ -100,6 +100,7 @@
           - debug: msg="swarm_setup"
           - shell: docker -H=tcp://master:2375 run -d --restart always -p 8500:8500 --name=consul progrium/consul -server -bootstrap
             ignore_errors: yes
+          - shell: sleep 60
           - shell: docker -H=tcp://master:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.10:2375 consul://10.0.10.10:8500
             ignore_errors: yes
           - shell: docker -H=tcp://slave1:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.11:2375 consul://10.0.10.10:8500
