@@ -43,14 +43,6 @@
         - name: Copy hosts file
           copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
 
-        - name: Create various work directories
-          file: path=/srv/{{item}} state=directory mode=0755 #owner=www-data group=www-data     recurse=yes
-          with_items:
-                  - 4store
-                  - postgis
-                  - cassandra
-                  - hdfs
-                    
         - name: Install basic packages 
           apt: state=present name={{item}}
           with_items:
