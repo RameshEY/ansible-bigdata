@@ -55,6 +55,7 @@
                   -  curl
                   -  linux-image-generic-lts-vivid
                   -  linux-headers-generic-lts-vivid
+                  -  linux-image-extra-virtual
 
         - name: restart machine due to kernel upgrade
           shell: sleep 2 && shutdown -r now "Ansible updates triggered"
