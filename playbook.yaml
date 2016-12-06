@@ -60,6 +60,7 @@
                   -  htop
                   -  nmon
                   -  git
+                  -  curl
                   -  linux-image-generic-lts-vivid
                   -  linux-headers-generic-lts-vivid
 
@@ -89,6 +90,13 @@
 
         - name: Create BDEuser 
           user: name=bdeuser shell=/bin/bash groups=docker append=yes
+
+        - name: Install docker compose
+          shell: 'curl -L https://github.com/docker/compose/releases/download/1.9.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose'
+
+        - name: Make compose executable
+          shell: 'chmod +x /usr/local/bin/docker-compose'
+
   handlers:
           - name: restart_docker
             service: name=docker state=restarted 
