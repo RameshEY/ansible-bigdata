@@ -84,7 +84,7 @@
           apt: state=present name=docker-engine
 
         - name: Setup docker daemon arguments
-          shell: echo "DOCKER_OPTS=\"-g /srv/docker -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=consul://10.0.10.10:8500 --cluster-advertise=`hostname -i`:2375\"" > /etc/default/docker
+          shell: echo "DOCKER_OPTS=\"-g /srv/docker -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=zk://10.0.10.10:2181 --cluster-advertise=`hostname -i`:2375\"" > /etc/default/docker
           notify: restart_docker
 
         - name: Create BDEuser 
@@ -97,29 +97,38 @@
   become: True
   become_method: sudo
   tasks:
+          - name: Install zookeeper for swarm
+            apt: state=present name={{item}}
+            with_items:
+                    -  zookeeper
+                    -  zookeeper-bin
+                    -  zookeeperd
+          - name: start zookeeper
+            service:
+              name=zookeeper
+              state=started
+              enabled=yes
+          - shell: sleep 300 
           - debug: msg="swarm_setup"
-          - shell: docker -H=tcp://master:2375 run -d --restart always -p 8500:8500 --name=consul -v /srv/consul:/data progrium/consul -server -bootstrap
+          - shell: docker -H=tcp://master:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.10:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: sleep 60
-          - shell: docker -H=tcp://master:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.10:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave1:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.11:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave1:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.11:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave2:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.12:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave2:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.12:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave3:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.13:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave3:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.13:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave4:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.14:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave4:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.14:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://master:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.10:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://master:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.10:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave1:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.11:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave1:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.11:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave2:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.12:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave2:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.12:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave3:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.13:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave3:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.13:2375 consul://10.0.10.10:8500
-            ignore_errors: yes
-          - shell: docker -H=tcp://slave4:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.14:2375 consul://10.0.10.10:8500
+          - shell: docker -H=tcp://slave4:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.14:2375 zk://10.0.10.10:2181
             ignore_errors: yes
           - shell: sleep 120
           - shell: docker -H=tcp://master:4000 network create --driver overlay --subnet=10.10.0.0/16 bde_net
