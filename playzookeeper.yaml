@@ -1,0 +1,34 @@
+---
+- hosts: zookeepers
+  become: True
+  become_method: sudo
+  tasks:
+          - name: Install zookeeper for swarm
+            apt: state=present name={{item}}
+            with_items:
+                    -  zookeeper
+                    -  zookeeper-bin
+                    -  zookeeperd
+
+          - name: Copy hosts file                                                                                                                                                                                                                                                
+            copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
+
+          - name: Edit zookeeper ids
+            shell: echo "{{ zoo_id }}" > /etc/zookeeper/conf/myid
+
+          - name: Edit zookeeper configuration
+            shell: echo "{{ zoo_servers }}" >> /etc/zookeeper/conf/zoo.cfg
+
+          - name: restart machine due to kernel upgrade
+            shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+            async: 1
+            poll: 0
+            sudo: true
+            ignore_errors: true
+          
+          - name: Start zookeeper
+            service:
+              name=zookeeper
+              state=started
+              enabled=yes
+

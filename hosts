@@ -4,14 +4,49 @@ bdegw.iit.demokritos.gr ansible_ssh_port=222 ansible_ssh_user=iitadmin
 [master]
 master.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
 
-[slaves]
+[slave1]
 slave1.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+
+[slave2]
 slave2.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+
+[slave3]
 slave3.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+
+[slave4]
 slave4.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+
+[slaves:children]
+slave1
+slave2
+slave3
+slave4
+
+[zookeepers:children]
+master
+slave1
+slave2
+slave3
+slave4
+
+[zookeepers:vars]
+zoo_servers="server.1=master:2888:3888\nserver.2=slave1:2888:3888\nserver.3=slave2:2888:3888\nserver.4=slave3:2888:3888\nserver.5=slave4:2888:3888"
 
 [master:vars]
 ansible_ssh_common_args='-o ProxyCommand="ssh -p222 -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
+zoo_id=1
 
 [slaves:vars]
 ansible_ssh_common_args='-o ProxyCommand="ssh -p222 -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
+
+[slave1:vars]
+zoo_id=2
+
+[slave2:vars]
+zoo_id=3
+
+[slave3:vars]
+zoo_id=4
+
+[slave4:vars]
+zoo_id=5

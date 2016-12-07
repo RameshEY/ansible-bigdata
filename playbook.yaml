@@ -94,7 +94,7 @@
           - name: restart_docker
             service: name=docker state=restarted 
           
-- hosts: master
+- hosts: zookeepers
   become: True
   become_method: sudo
   tasks:
@@ -104,12 +104,24 @@
                     -  zookeeper
                     -  zookeeper-bin
                     -  zookeeperd
-          - name: start zookeeper
+
+          - name: Edit zookeeper ids
+            shell: echo "{{ zoo_id }}" > /etc/zookeeper/conf/myid
+
+          - name: Edit zookeeper configuration
+            shell: echo "{{ zoo_servers }}" >> /etc/zookeeper/conf/zoo.cfg
+
+          - name: Start zookeeper
             service:
               name=zookeeper
               state=started
               enabled=yes
-          - shell: sleep 300 
+
+- hosts: master
+  become: True
+  become_method: sudo
+  tasks:
+          - shell: sleep 300
           - debug: msg="master swarm setup"
           - shell: docker run -d --restart always -p 4000:2375 swarm manage --replication --advertise=`hostname -i`:2375 zk://`getent hosts master | awk '{ print $1 }'`:2181
             ignore_errors: yes
