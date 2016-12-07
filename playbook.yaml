@@ -133,6 +133,7 @@
           - debug: msg="network, cassandra and hadoop setup"
           - shell: sleep 300
           - shell: docker -H=tcp://master:4000 network create --driver overlay --subnet=10.10.0.0/16 bde_net
+          --shell: sleep 100
           
           - name: Copy cassandra startup script
             copy: src=files/start_cassandra.sh dest=/root owner=root group=root mode=0744
