@@ -2,13 +2,13 @@
 bdegw.iit.demokritos.gr ansible_ssh_port=222 ansible_ssh_user=iitadmin
 
 [master]
-master.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin	 #ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
+master.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
 
 [slaves]
-slave1.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin	 #ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
-slave2.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin	 #ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
-slave3.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin	 #ansible_ssh_host=192.168.2.154 ansible_ssh_user=iitadmin
-slave4.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin	 #ansible_ssh_host=192.168.2.154 ansible_ssh_user=iitadmin
+slave1.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+slave2.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+slave3.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
+slave4.bde-cluster ansible_ssh_port=22 ansible_ssh_user=iitadmin
 
 [master:vars]
 ansible_ssh_common_args='-o ProxyCommand="ssh -p222 -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
