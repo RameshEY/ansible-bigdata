@@ -110,28 +110,28 @@
               state=started
               enabled=yes
           - shell: sleep 300 
-          - debug: msg="swarm_setup"
-          - shell: docker -H=tcp://master:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.10:2375 zk://10.0.10.10:2181
+          - debug: msg="master swarm setup"
+          - shell: docker run -d --restart always -p 4000:2375 swarm manage --replication --advertise=`hostname -i`:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave1:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.11:2375 zk://10.0.10.10:2181
+          - shell: docker run -d --restart always --name swarm-agent swarm join --advertise=`hostname -i`:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave2:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.12:2375 zk://10.0.10.10:2181
+
+- hosts: slaves
+  become: True
+  become_method: sudo
+  tasks:
+          - debug: msg="slaves swarm setup"
+          - shell: docker run -d --restart always -p 4000:2375 swarm manage --replication --advertise=`hostname -i`:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave3:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.13:2375 zk://10.0.10.10:2181
+          - shell: docker run -d --restart always --name swarm-agent swarm join --advertise=`hostname -i`:2375 zk://10.0.10.10:2181
             ignore_errors: yes
-          - shell: docker -H=tcp://slave4:2375 run -d --restart always -p 4000:2375 swarm manage --replication --advertise=10.0.10.14:2375 zk://10.0.10.10:2181
-            ignore_errors: yes
-          - shell: docker -H=tcp://master:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.10:2375 zk://10.0.10.10:2181
-            ignore_errors: yes
-          - shell: docker -H=tcp://slave1:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.11:2375 zk://10.0.10.10:2181
-            ignore_errors: yes
-          - shell: docker -H=tcp://slave2:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.12:2375 zk://10.0.10.10:2181
-            ignore_errors: yes
-          - shell: docker -H=tcp://slave3:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.13:2375 zk://10.0.10.10:2181
-            ignore_errors: yes
-          - shell: docker -H=tcp://slave4:2375 run -d --restart always --name swarm-agent swarm join --advertise=10.0.10.14:2375 zk://10.0.10.10:2181
-            ignore_errors: yes
-          - shell: sleep 120
+            
+- hosts: master
+  become: True
+  become_method: sudo
+  tasks:
+          - debug: msg="network, cassandra and hadoop setup"
+          - shell: sleep 300
           - shell: docker -H=tcp://master:4000 network create --driver overlay --subnet=10.10.0.0/16 bde_net
           
           - name: Copy cassandra startup script
