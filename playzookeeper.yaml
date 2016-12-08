@@ -12,9 +12,15 @@
 
           - name: Copy hosts file                                                                                                                                                                                                                                                
             copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
+            
+          - name: Create zookeeper dir
+            file: path=/srv/zookeeper state=directory owner=zookeeper group=zookeeper mode=0755
+            
+          - name: change zookeeper dataDir
+            shell: 'sed -i s#/var/lib/zookeeper#/srv/zookeeper# /etc/zookeeper/conf/zoo.cfg'
 
           - name: Edit zookeeper ids
-            shell: echo "{{ zoo_id }}" > /etc/zookeeper/conf/myid
+            shell: echo "{{ zoo_id }}" > /srv/zookeeper/myid
 
           - name: Edit zookeeper configuration
             shell: echo "{{ zoo_servers }}" >> /etc/zookeeper/conf/zoo.cfg
