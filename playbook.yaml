@@ -143,24 +143,3 @@
             ignore_errors: yes
           - shell: docker run -d --restart always --name swarm-agent swarm join --advertise=`hostname -i`:2375 zk://`getent hosts master | awk '{ print $1 }'`:2181
             ignore_errors: yes
-            
-- hosts: master
-  become: True
-  become_method: sudo
-  tasks:
-          - debug: msg="network, cassandra and hadoop setup"
-          - shell: sleep 300
-          - shell: docker -H=tcp://master:4000 network create --driver overlay --subnet=10.10.0.0/16 bde_net
-          - shell: sleep 100
-          
-          - name: Copy cassandra startup script
-            copy: src=files/start_cassandra.sh dest=/root owner=root group=root mode=0744
-          
-          - name: Copy hdfs startup script
-            copy: src=files/start_hdfs.sh dest=/root owner=root group=root mode=0744
-          
-          - name: Execute the cassandra script
-            command: sh /root/start_cassandra.sh
-          
-          - name: Execute the hdfs script
-            command: sh /root/start_hdfs.sh
