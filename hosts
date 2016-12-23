@@ -31,6 +31,7 @@ slave4
 
 [zookeepers:vars]
 zoo_servers="server.1=master:2888:3888\nserver.2=slave1:2888:3888\nserver.3=slave2:2888:3888\nserver.4=slave3:2888:3888\nserver.5=slave4:2888:3888"
+zoo_addrs="`getent hosts master | awk '{ print $1 }'`:2181,`getent hosts slave1 | awk '{ print $1 }'`:2181,`getent hosts slave2 | awk '{ print $1 }'`:2181,`getent hosts slave3 | awk '{ print $1 }'`:2181,`getent hosts slave4 | awk '{ print $1 }'`:2181"
 
 [master:vars]
 ansible_ssh_common_args='-o ProxyCommand="ssh -p222 -W %h:%p iitadmin@bdegw.iit.demokritos.gr"'
