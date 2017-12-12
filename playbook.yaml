@@ -1,39 +1,41 @@
 ---
-- hosts: gateway
-  become: True
-  become_method: sudo
-  tasks:
 
-        - name: Copy hosts file
-          copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
+#- hosts: gateway
+  #become: True
+  #become_method: sudo
+  #tasks:
+
+        #- name: Copy hosts file
+          #copy: src=files/hosts dest=/etc/hosts owner=root group=root mode=0644
         
-        - name: Copy network configuration file
-          copy: src=files/bdegw_interfaces.txt dest=/etc/network/interfaces owner=root group=root mode=0644
+        #- name: Copy network configuration file
+          #copy: src=files/bdegw_interfaces.txt dest=/etc/network/interfaces owner=root group=root mode=0644
         
-        - command: ifup eth0
+        #- command: ifup eth0
 
-        - name: Enable forwarding
-          sysctl: name="net.ipv4.ip_forward" value=1 sysctl_set=yes state=present reload=yes
+        #- name: Enable forwarding
+          #sysctl: name="net.ipv4.ip_forward" value=1 sysctl_set=yes state=present reload=yes
 
-        - name: Create bdeuser
-          user: name=bdeuser shell=/bin/bash
+        #- name: Create bdeuser
+          #user: name=bdeuser shell=/bin/bash
 
-        - name: install basic packages 
-          apt: state=present name={{item}}
-          with_items:
-                  -  ntp
-                  -  htop
-                  -  nmon
-                  -  nginx
-                  -  iptables-persistent
+        #- name: install basic packages 
+          #apt: state=present name={{item}}
+          #with_items:
+                  #-  ntp
+                  #-  htop
+                  #-  nmon
+                  #-  nginx
+                  #-  iptables-persistent
         
-        - command: iptables --flush
-        - command: iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
-        - command: iptables -A FORWARD -i eth1 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
-        - command: iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT
-        - shell:   iptables-save > /etc/iptables/rules.v4
+        #- command: iptables --flush
+        #- command: iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+        #- command: iptables -A FORWARD -i eth1 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+        #- command: iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT
+        #- shell:   iptables-save > /etc/iptables/rules.v4
 
-- hosts: master:slaves
+#Configure swarm machines and deploy docker engine
+- hosts: swarm_nodes
   become: True
   become_method: sudo
   tasks:
@@ -53,10 +55,8 @@
                   -  nmon
                   -  git
                   -  curl
-                  -  linux-image-generic-lts-vivid
-                  -  linux-headers-generic-lts-vivid
-                  -  linux-image-extra-virtual
-
+                  -  software-properties-common
+    
         - name: restart machine due to kernel upgrade
           shell: sleep 2 && shutdown -r now "Ansible updates triggered"
           async: 1
@@ -69,23 +69,23 @@
           become: False
 
         - name: Add docker key
-          apt_key: keyserver=p80.pool.sks-keyservers.net id=58118E89F3A912897C070ADBF76221572C52609D
+          apt_key: keyserver=p80.pool.sks-keyservers.net id=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 
         - name: Add docker repo
-          apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
+          apt_repository: repo='deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable' state=present
 
         - name: Install docker
-          apt: state=present name=docker-engine
-
-        - name: Setup docker daemon arguments
-          shell: echo "DOCKER_OPTS=\"-g /srv/docker -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=zk://`getent hosts master | awk '{ print $1 }'`:2181 --cluster-advertise=`hostname -i`:2375\"" > /etc/default/docker
+          apt: state=present name=docker-ce
+          
+        - name: Copy docker daemon configuration file
+          copy: src=files/daemon.json dest=/etc/docker/daemon.json owner=root group=root #mode=600
           notify: restart_docker
 
-        - name: Create BDEuser 
-          user: name=bdeuser shell=/bin/bash groups=docker append=yes
+        #- name: Create BDEuser 
+          #user: name=bdeuser shell=/bin/bash groups=docker append=yes
 
         - name: Install docker compose
-          shell: 'curl -L https://github.com/docker/compose/releases/download/1.9.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose'
+          shell: 'curl -L https://github.com/docker/compose/releases/download/1.17.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose'
 
         - name: Make compose executable
           shell: 'chmod +x /usr/local/bin/docker-compose'
@@ -93,56 +93,62 @@
   handlers:
           - name: restart_docker
             service: name=docker state=restarted 
-          
-- hosts: master
-  become: True
-  become_method: sudo
-  tasks:
-          - name: Install zookeeper for swarm
-            apt: state=present name={{item}}
-            with_items:
-                    -  zookeeper
-                    -  zookeeper-bin
-                    -  zookeeperd
-          - name: start zookeeper
-            service:
-              name=zookeeper
-              state=started
-              enabled=yes
-          - shell: sleep 300 
-          - debug: msg="master swarm setup"
-          - shell: docker run -d --restart always -p 4000:2375 swarm manage --replication --advertise=`hostname -i`:2375 zk://`getent hosts master | awk '{ print $1 }'`:2181
-            ignore_errors: yes
-          - shell: docker run -d --restart always --name swarm-agent swarm join --advertise=`hostname -i`:2375 zk://`getent hosts master | awk '{ print $1 }'`:2181
-            ignore_errors: yes
 
-- hosts: slaves
+#Deploy swarm
+- hosts: swarm_nodes
   become: True
   become_method: sudo
   tasks:
-          - debug: msg="slaves swarm setup"
-          - shell: docker run -d --restart always -p 4000:2375 swarm manage --replication --advertise=`hostname -i`:2375 zk://`getent hosts master | awk '{ print $1 }'`:2181
-            ignore_errors: yes
-          - shell: docker run -d --restart always --name swarm-agent swarm join --advertise=`hostname -i`:2375 zk://`getent hosts master | awk '{ print $1 }'`:2181
-            ignore_errors: yes
-            
-- hosts: master
-  become: True
-  become_method: sudo
-  tasks:
-          - debug: msg="network, cassandra and hadoop setup"
-          - shell: sleep 300
-          - shell: docker -H=tcp://master:4000 network create --driver overlay --subnet=10.10.0.0/16 bde_net
-          - shell: sleep 100
+  
+    - name: check if swarm mode is enabled.
+      shell: docker info
+      changed_when: False
+      register: docker_info
+      
+    - name: Init swarm mode on the first manager.
+      shell: docker swarm init --advertise-addr=`hostname -i`:2377
+      when: "docker_info.stdout.find('Swarm: active') == -1
+          and inventory_hostname == groups.swarm_managers[0]"
+
+    - name: Get the worker join-token.
+      shell: docker swarm join-token -q worker
+      changed_when: False
+      register: worker_token
+      delegate_to: "{{ groups.swarm_managers[0] }}"
+      delegate_facts: True
+      when: "'swarm_workers' in group_names"
+    
+    - name: get the manager join-token.
+      shell: docker swarm join-token -q manager
+      changed_when: False
+      register: manager_token
+      delegate_to: "{{ groups.swarm_managers[0] }}"
+      delegate_facts: True
+      when: "'swarm_managers' in group_names
+          and inventory_hostname != groups.swarm_managers[0]"
           
-          - name: Copy cassandra startup script
-            copy: src=files/start_cassandra.sh dest=/root owner=root group=root mode=0744
-          
-          - name: Copy hdfs startup script
-            copy: src=files/start_hdfs.sh dest=/root owner=root group=root mode=0744
-          
-          - name: Execute the cassandra script
-            command: sh /root/start_cassandra.sh
-          
-          - name: Execute the hdfs script
-            command: sh /root/start_hdfs.sh
+    - name: get the manager address.
+      shell: hostname -i
+      changed_when: False
+      register: manager_address
+      delegate_to: "{{ groups.swarm_managers[0] }}"
+      delegate_facts: True
+      when: inventory_hostname != groups.swarm_managers[0]
+
+
+    - name: join the pending Swarm worker nodes.
+      shell: docker swarm join --token "{{ worker_token.stdout }}" "{{ manager_address.stdout }}":2377
+      changed_when: False
+      when: "docker_info.stdout.find('Swarm: active') == -1
+          and docker_info.stdout.find('Swarm: pending') == -1
+          and 'swarm_workers' in group_names"
+
+
+    - name: Join the pending Swarm manager nodes.
+      shell: docker swarm join --token "{{ manager_token.stdout }}" "{{ manager_address.stdout }}":2377
+      changed_when: False
+      when: "docker_info.stdout.find('Swarm: active') == -1
+          and docker_info.stdout.find('Swarm: pending') == -1
+          and 'swarm_managers' in group_names
+          and inventory_hostname != groups.swarm_managers[0]"
+
